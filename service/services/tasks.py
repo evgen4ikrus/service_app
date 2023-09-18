@@ -1,7 +1,8 @@
-import time
+import datetime
 
 from celery import shared_task
 from celery_singleton import Singleton
+from django.db import transaction
 from django.db.models import F
 
 
@@ -9,9 +10,21 @@ from django.db.models import F
 def set_price(subscription_id):
     from .models import Subscription
 
-    subscription = Subscription.objects.filter(id=subscription_id).annotate(
-        annotated_price=F('service__full_price') - F('service__full_price') * F('plan__discount_percent') / 100.00
-    ).first()
+    with transaction.atomic():
+        subscription = Subscription.objects.select_for_update().filter(id=subscription_id).annotate(
+            annotated_price=F('service__full_price') - F('service__full_price') * F('plan__discount_percent') / 100.00
+        ).first()
 
-    subscription.price = subscription.annotated_price
-    subscription.save()
+        subscription.price = subscription.annotated_price
+        subscription.save()
+
+
+@shared_task(base=Singleton)
+def set_comment(subscription_id):
+    from .models import Subscription
+
+    with transaction.atomic():
+        subscription = Subscription.objects.select_for_update().get(id=subscription_id)
+
+        subscription.comment = 'Comment Bla Bla' + str(datetime.datetime.now())
+        subscription.save()
