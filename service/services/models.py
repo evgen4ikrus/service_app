@@ -22,6 +22,9 @@ class Service(models.Model):
                 set_comment.delay(subscription.id)
         return super().save(*args, **kwargs)
 
+    def __str__(self):
+        return f"{self.name} - {self.full_price}"
+
 
 class Plan(models.Model):
     PLAN_TYPES = (
@@ -44,16 +47,19 @@ class Plan(models.Model):
                 set_comment.delay(subscription.id)
         return super().save(*args, **kwargs)
 
+    def __str__(self):
+        return f"{self.plan_type} - {self.discount_percent}"
+
 
 class Subscription(models.Model):
     client = models.ForeignKey(Client, related_name='subscriptions', on_delete=models.PROTECT)
     service = models.ForeignKey(Service, related_name='subscriptions', on_delete=models.PROTECT)
     plan = models.ForeignKey(Plan, related_name='subscriptions', on_delete=models.PROTECT)
     price = models.PositiveIntegerField(default=0)
-    comment = models.CharField(max_length=100, default='', db_index=True)
+    comment = models.CharField(max_length=100, default='', db_index=True, blank=True)
 
-    field_a = models.CharField(max_length=100, default='')
-    field_b = models.CharField(max_length=100, default='')
+    field_a = models.CharField(max_length=100, default='', blank=True)
+    field_b = models.CharField(max_length=100, default='', blank=True)
 
     class Meta:
         indexes = [
@@ -66,6 +72,9 @@ class Subscription(models.Model):
         if creating:
             set_price.delay(self.id)
         return result
+
+    def __str__(self):
+        return f"{self.client} {self.service}"
 
 
 post_delete.connect(delete_cache_total_sum, sender=Subscription)
